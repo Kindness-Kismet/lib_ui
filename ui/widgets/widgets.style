@@ -626,6 +626,10 @@ SideBarButton {
 	badgeBgMuted: color;
 	badgeBgMutedActive: color;
 	badgeFg: color;
+	padding: margins;
+	radius: pixels;
+	accentWidth: pixels;
+	accentSkip: pixels;
 	ripple: RippleAnimation;
 }
 
@@ -1540,6 +1544,10 @@ defaultSideBarButton: SideBarButton {
 	badgeBgMuted: sideBarBadgeBgMuted;
 	badgeBgMutedActive: sideBarBadgeBgMutedActive;
 	badgeFg: sideBarBadgeFg;
+	padding: margins(6px, 4px, 6px, 4px);
+	radius: 12px;
+	accentWidth: 3px;
+	accentSkip: 12px;
 	ripple: RippleAnimation(defaultRippleAnimation) {
 		color: sideBarBgRipple;
 	}

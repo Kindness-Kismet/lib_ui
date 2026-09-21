@@ -51,6 +51,10 @@ public:
 private:
 	void paintEvent(QPaintEvent *e) override;
 
+	[[nodiscard]] QRect innerRect() const;
+	QImage prepareRippleMask() const override;
+	QPoint prepareRippleStartPosition() const override;
+
 	[[nodiscard]] const style::icon &computeIcon() const;
 	[[nodiscard]] int iconLeft() const;
 	[[nodiscard]] int iconTop() const;

@@ -8,6 +8,7 @@
 
 #include "ui/effects/ripple_animation.h"
 #include "ui/painter.h"
+#include "ui/style/style_core_direction.h"
 #include "styles/style_widgets.h"
 
 #include <QtGui/QtEvents>
@@ -162,14 +163,61 @@ int SideBarButton::resizeGetHeight(int newWidth) {
 	return result + std::max(add, 0);
 }
 
+QRect SideBarButton::innerRect() const {
+	return style::rtlrect(rect().marginsRemoved(_st.padding), width());
+}
+
+QImage SideBarButton::prepareRippleMask() const {
+	const auto inner = innerRect();
+	if (inner.isEmpty()) {
+		return RippleAnimation::RectMask(size());
+	}
+	return RippleAnimation::RoundRectMask(inner.size(), _st.radius);
+}
+
+QPoint SideBarButton::prepareRippleStartPosition() const {
+	const auto inner = innerRect();
+	const auto result = mapFromGlobal(QCursor::pos()) - inner.topLeft();
+	return QRect(QPoint(), inner.size()).contains(result)
+		? result
+		: DisabledRippleStartPosition();
+}
+
 void SideBarButton::paintEvent(QPaintEvent *e) {
 	auto p = Painter(this);
 	const auto clip = e->rect();
+	const auto inner = innerRect();
 
+	// 未选中区域保持侧栏底色；选中态画在内缩圆角矩形上。
+	p.fillRect(clip, _st.textBg);
 	const auto &bg = _active ? _st.textBgActive : _st.textBg;
-	p.fillRect(clip, bg);
+	if (_active && !inner.isEmpty()) {
+		auto hq = PainterHighQualityEnabler(p);
+		p.setPen(Qt::NoPen);
+		p.setBrush(bg);
+		p.drawRoundedRect(inner, _st.radius, _st.radius);
+		if (const auto barWidth = _st.accentWidth; barWidth > 0) {
+			const auto skip = std::min(
+				_st.accentSkip,
+				std::max((inner.height() - barWidth) / 2, 0));
+			const auto barHeight = inner.height() - 2 * skip;
+			if (barHeight > 0) {
+				const auto barX = style::RightToLeft()
+					? (inner.x() + inner.width() - barWidth)
+					: inner.x();
+				p.setBrush(_st.textFgActive);
+				p.drawRoundedRect(
+					barX,
+					inner.y() + skip,
+					barWidth,
+					barHeight,
+					barWidth / 2.,
+					barWidth / 2.);
+			}
+		}
+	}
 
-	RippleButton::paintRipple(p, 0, 0);
+	RippleButton::paintRipple(p, inner.topLeft());
 
 	if (_lock.locked) {
 		p.setOpacity(kPremiumLockedOpacity);
