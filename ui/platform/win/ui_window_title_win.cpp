@@ -136,10 +136,15 @@ void TitleWidget::setResizeEnabled(bool enabled) {
 }
 
 void TitleWidget::paintEvent(QPaintEvent *e) {
-	const auto active = window()->isActiveWindow();
-	QPainter(this).fillRect(
-		e->rect(),
-		active ? _controls.st()->bgActive : _controls.st()->bg);
+	// 全窗统一底色:按主题明暗切白/深灰,不区分激活态,靠阴影区分卡片
+	const auto bg = st::windowBg->c;
+	const auto luminance = (bg.red() * 299
+		+ bg.green() * 587
+		+ bg.blue() * 114) / 1000;
+	const auto fill = (luminance > 128)
+		? QColor(0xff, 0xff, 0xff)
+		: QColor(0x21, 0x21, 0x21);
+	QPainter(this).fillRect(e->rect(), fill);
 }
 
 void TitleWidget::resizeEvent(QResizeEvent *e) {
