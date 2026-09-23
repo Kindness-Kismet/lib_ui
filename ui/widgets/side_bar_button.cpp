@@ -10,6 +10,7 @@
 #include "ui/painter.h"
 #include "ui/style/style_core_direction.h"
 #include "styles/style_widgets.h"
+#include "styles/palette.h"
 
 #include <QtGui/QtEvents>
 #include <QAccessible>
@@ -188,13 +189,19 @@ void SideBarButton::paintEvent(QPaintEvent *e) {
 	const auto clip = e->rect();
 	const auto inner = innerRect();
 
-	// 未选中区域保持侧栏底色；选中态画在内缩圆角矩形上。
-	p.fillRect(clip, _st.textBg);
-	const auto &bg = _active ? _st.textBgActive : _st.textBg;
+	// 侧栏与主窗口共用统一底色,靠阴影和圆角区分;选中态画在内缩圆角矩形上。
+	const auto base = st::windowBg->c;
+	const auto luminance = (base.red() * 299
+		+ base.green() * 587
+		+ base.blue() * 114) / 1000;
+	const auto unified = (luminance > 128)
+		? QColor(0xff, 0xff, 0xff)
+		: QColor(0x21, 0x21, 0x21);
+	p.fillRect(clip, unified);
 	if (_active && !inner.isEmpty()) {
 		auto hq = PainterHighQualityEnabler(p);
 		p.setPen(Qt::NoPen);
-		p.setBrush(bg);
+		p.setBrush(_st.textBgActive);
 		p.drawRoundedRect(inner, _st.radius, _st.radius);
 		if (const auto barWidth = _st.accentWidth; barWidth > 0) {
 			const auto skip = std::min(
@@ -284,7 +291,7 @@ void SideBarButton::paintEvent(QPaintEvent *e) {
 				(width() - lineWidths.front()) / 2.,
 				_st.textTop + (_st.style.font->height - size.height()) / 2.);
 			p.setOpacity(1.);
-			p.fillRect(QRect(QPoint(), size), bg);
+			p.fillRect(QRect(QPoint(), size), unified);
 			p.setOpacity(kPremiumLockedOpacity);
 			p.translate(-_st.style.font->spacew / 2., 0);
 		} else {
