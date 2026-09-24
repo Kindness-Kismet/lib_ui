@@ -47,6 +47,7 @@ public:
 	PopupMenu(QWidget *parent, const style::PopupMenu &st = st::defaultPopupMenu);
 	PopupMenu(QWidget *parent, QMenu *menu, const style::PopupMenu &st = st::defaultPopupMenu);
 	~PopupMenu();
+	[[nodiscard]] static PopupMenu *Active();
 
 	QAccessible::Role accessibilityRole() override {
 		return QAccessible::Role::PopupMenu;
@@ -174,6 +175,8 @@ private:
 	void opacityAnimationCallback();
 
 	void init();
+	void embedIntoParent();
+	[[nodiscard]] int constrainedScrollHeight(int wanted) const;
 
 	void finishSwitchAnimation();
 
@@ -233,6 +236,8 @@ private:
 		base::unique_qptr<PopupMenu>> _submenus;
 
 	PopupMenu *_parent = nullptr;
+	QPointer<QWidget> _owner;
+	QPointer<QWidget> _previousFocus;
 
 	QRect _inner;
 	QMargins _padding;

@@ -27,6 +27,7 @@
 #include <QtGui/QScreen>
 #include <QtGui/QWindow>
 #include <QtWidgets/QApplication>
+#include <QtWidgets/QGraphicsEffect>
 #include <qpa/qplatformwindow.h>
 #include <qpa/qplatformwindow_p.h>
 
@@ -34,6 +35,46 @@ namespace Ui {
 namespace {
 
 constexpr auto kSubmenuAimDelay = crl::time(300);
+
+void ConstrainEmbeddedMenu(not_null<PopupMenu*> menu) {
+	if (menu->isWindow()) {
+		return;
+	}
+	const auto available = menu->parentWidget()->contentsRect();
+	menu->move(std::clamp(menu->x(), available.left(), std::max(available.left(),
+		available.x() + available.width() - menu->width())),
+		std::clamp(menu->y(), available.top(), std::max(available.top(),
+			available.y() + available.height() - menu->height())));
+}
+
+class MenuSurface final : public QGraphicsEffect {
+public:
+	explicit MenuSurface(int radius) : _radius(radius) {
+	}
+
+protected:
+	void draw(QPainter *p) override {
+		auto offset = QPoint();
+		const auto source = sourcePixmap(Qt::LogicalCoordinates, &offset, NoPad);
+		auto surface = QPixmap(source.size());
+		surface.setDevicePixelRatio(source.devicePixelRatio());
+		surface.fill(Qt::transparent);
+		{
+			auto painter = QPainter(&surface);
+			painter.setRenderHint(QPainter::Antialiasing);
+			painter.setPen(Qt::NoPen);
+			painter.setBrush(Qt::white);
+			painter.drawRoundedRect(QRectF(QPointF(),
+				QSizeF(source.size()) / source.devicePixelRatio()), _radius, _radius);
+			painter.setCompositionMode(QPainter::CompositionMode_SourceIn);
+			painter.drawPixmap(0, 0, source);
+		}
+		p->drawPixmap(offset, surface);
+	}
+
+private:
+	const int _radius;
+};
 
 [[nodiscard]] bool PointInTriangle(
 		QPoint point,
@@ -76,6 +117,25 @@ PopupMenu::PopupMenu(QWidget *parent, const style::PopupMenu &st)
 		object_ptr<Menu::Menu>(_scroll.data(), _st.menu),
 		_st.scrollPadding))->entity()) {
 	init();
+}
+
+PopupMenu *PopupMenu::Active() {
+	if (const auto native = dynamic_cast<PopupMenu*>(QApplication::activePopupWidget())) {
+		return native;
+	}
+	for (const auto top : QApplication::topLevelWidgets()) {
+		if (!top->isVisible()) {
+			continue;
+		}
+		const auto children = top->children();
+		for (auto i = children.crbegin(); i != children.crend(); ++i) {
+			if (const auto menu = dynamic_cast<PopupMenu*>(*i)
+				; menu && !menu->isWindow() && menu->isVisible() && !menu->_hiding) {
+				return menu;
+			}
+		}
+	}
+	return nullptr;
 }
 
 PopupMenu::PopupMenu(QWidget *parent, QMenu *menu, const style::PopupMenu &st)
@@ -132,6 +192,36 @@ void PopupMenu::init() {
 		setAttribute(Qt::WA_TranslucentBackground, false);
 		setAttribute(Qt::WA_OpaquePaintEvent, true);
 	}
+}
+
+void PopupMenu::embedIntoParent() {
+	const auto owner = parentWidget();
+	if (!isWindow() || !owner || owner->window()->windowType() == Qt::Popup) {
+		return;
+	}
+	_owner = owner;
+	setParent(owner->window(), Qt::Widget);
+	setAttribute(Qt::WA_TranslucentBackground, false);
+	setAttribute(Qt::WA_NoSystemBackground, false);
+	setAttribute(Qt::WA_OpaquePaintEvent, false);
+	setFocusPolicy(Qt::StrongFocus);
+	_useTransparency = true;
+	_scroll->setGraphicsEffect(new MenuSurface(_st.radius));
+	if (owner != parentWidget()) {
+		QObject::connect(owner, &QObject::destroyed, this, [=] {
+			hideMenu(true);
+			deleteLater();
+		});
+	}
+}
+
+int PopupMenu::constrainedScrollHeight(int wanted) const {
+	const auto styled = _st.maxHeight ? std::min(_st.maxHeight, wanted) : wanted;
+	return isWindow()
+		? styled
+		: std::min(styled, std::max(1,
+			parentWidget()->contentsRect().height()
+				- _padding.top() - _padding.bottom()));
 }
 
 not_null<PopupMenu*> PopupMenu::ensureSubmenu(
@@ -196,14 +286,16 @@ void PopupMenu::validateCompositingSupport() {
 			std::max(ext.bottom(), additional.bottom()));
 		_margins = _padding - (additional - _additionalMenuMargins);
 	}
-	Platform::SetWindowMargins(this, _margins);
+	if (isWindow()) {
+		Platform::SetWindowMargins(this, _margins);
+	}
 	_scroll->moveToLeft(_padding.left(), _padding.top());
 	handleMenuResize();
 	updateRoundingOverlay();
 }
 
 void PopupMenu::updateRoundingOverlay() {
-	if (!_useTransparency) {
+	if (!_useTransparency || !isWindow()) {
 		_roundingOverlay.destroy();
 		return;
 	} else if (_roundingOverlay) {
@@ -241,9 +333,7 @@ void PopupMenu::handleMenuResize() {
 	auto newWidth = _padding.left() + _st.scrollPadding.left() + _menu->width() + _st.scrollPadding.right() + _padding.right();
 	auto newHeight = _padding.top() + _st.scrollPadding.top() + _menu->height() + _st.scrollPadding.bottom() + _padding.bottom();
 	const auto wantedHeight = newHeight - _padding.top() - _padding.bottom();
-	const auto scrollHeight = _st.maxHeight
-		? std::min(_st.maxHeight, wantedHeight)
-		: wantedHeight;
+	const auto scrollHeight = constrainedScrollHeight(wantedHeight);
 	_scroll->resize(
 		newWidth - _padding.left() - _padding.right(),
 		scrollHeight);
@@ -255,6 +345,9 @@ void PopupMenu::handleMenuResize() {
 		resize(newSize);
 	}
 	_inner = rect().marginsRemoved(_padding);
+	if (isVisible()) {
+		ConstrainEmbeddedMenu(this);
+	}
 }
 
 not_null<QAction*> PopupMenu::addAction(
@@ -284,13 +377,7 @@ not_null<QAction*> PopupMenu::addAction(
 		action,
 		base::unique_qptr<PopupMenu>(submenu.release())
 	).first->second.get();
-	// Reparent under the menu itself (like ensureSubmenu and the QMenu
-	// constructor do), so the submenu window gets this menu's window as
-	// its transient parent, but keep the window flags: the single-argument
-	// QWidget::setParent() resets them, which strips the Qt::Popup type set
-	// in init() and demotes the submenu to a plain child widget. Such a widget
-	// has no windowHandle() after createWinId(), so prepareGeometryFor() can't
-	// show it.
+	// 保留弹出类型，首次显示时再根据宿主决定是否嵌入窗口。
 	saved->setParent(this, saved->windowFlags());
 	saved->deleteOnHide(false);
 	return action;
@@ -373,7 +460,9 @@ void PopupMenu::paintEvent(QPaintEvent *e) {
 		PostponeCall(this, [=] {
 			showChildren();
 			_animatePhase = AnimatePhase::Shown;
-			Platform::AcceptAllMouseInput(this);
+			if (isWindow()) {
+				Platform::AcceptAllMouseInput(this);
+			}
 		});
 	} else {
 		paintBg(p);
@@ -381,7 +470,12 @@ void PopupMenu::paintEvent(QPaintEvent *e) {
 }
 
 void PopupMenu::paintBg(QPainter &p) {
-	if (!_useTransparency) {
+	if (!isWindow()) {
+		_roundRect.paint(p, _inner);
+		if (!_grabbingForPanelAnimation) {
+			_boxShadow.paint(p, _inner, _st.radius);
+		}
+	} else if (!_useTransparency) {
 		p.fillRect(0, 0, width() - _padding.right(), _padding.top(), _st.shadowFallback);
 		p.fillRect(width() - _padding.right(), 0, _padding.right(), height() - _padding.bottom(), _st.shadowFallback);
 		p.fillRect(_padding.left(), height() - _padding.bottom(), width() - _padding.left(), _padding.bottom(), _st.shadowFallback);
@@ -541,7 +635,7 @@ void PopupMenu::popupSubmenu(
 		_activeSubmenu->menu()->clearSelection();
 		_activeSubmenu->setAccessibleName(action->text());
 		if (_activeSubmenu->prepareGeometryFor(
-				geometry().topLeft() + p,
+				mapToGlobal(p),
 				this,
 				_menu->itemForAction(action))) {
 			_activeSubmenu->animatePhaseValue(
@@ -621,12 +715,20 @@ void PopupMenu::handleMouseRelease(QPoint globalPosition) {
 }
 
 void PopupMenu::focusOutEvent(QFocusEvent *e) {
-	if (!InFocusChain(this)) {
+	if (isWindow() && !InFocusChain(this)) {
 		hideMenu();
 	}
 }
 
 void PopupMenu::hideEvent(QHideEvent *e) {
+	if (!isWindow() && !_parent) {
+		qApp->removeEventFilter(this);
+		if (const auto previous = base::take(_previousFocus)) {
+			if (previous->isVisible() && previous->isEnabled()) {
+				previous->setFocus(Qt::PopupFocusReason);
+			}
+		}
+	}
 	if (_deleteOnHide) {
 		if (_triggering) {
 			_deleteLater = true;
@@ -657,6 +759,34 @@ void PopupMenu::mousePressEvent(QMouseEvent *e) {
 
 bool PopupMenu::eventFilter(QObject *o, QEvent *e) {
 	const auto type = e->type();
+	if (!isWindow() && !_parent && isVisible() && !_hiding) {
+		if (o == window()
+			&& (type == QEvent::WindowDeactivate
+				|| type == QEvent::Resize
+				|| type == QEvent::Hide)) {
+			hideMenu(true);
+			return false;
+		}
+		const auto widget = qobject_cast<QWidget*>(o);
+		auto inside = false;
+		for (auto menu = this; menu; menu = menu->_activeSubmenu.data()) {
+			if (widget == menu || (widget && menu->isAncestorOf(widget))) {
+				inside = true;
+				break;
+			}
+		}
+		if (!inside && widget && widget->window() == window()) {
+			if (type == QEvent::MouseButtonPress
+				|| type == QEvent::MouseButtonDblClick
+				|| type == QEvent::TouchBegin) {
+				hideMenu();
+				return true;
+			} else if (type == QEvent::KeyPress) {
+				forwardKeyPress(static_cast<QKeyEvent*>(e));
+				return true;
+			}
+		}
+	}
 	if (type == QEvent::TouchBegin
 		|| type == QEvent::TouchUpdate
 		|| type == QEvent::TouchEnd) {
@@ -702,7 +832,11 @@ void PopupMenu::childHiding(PopupMenu *child) {
 	}
 	if (!_hiding && !isHidden()) {
 		raise();
-		activateWindow();
+		if (isWindow()) {
+			activateWindow();
+		} else {
+			setFocus(Qt::PopupFocusReason);
+		}
 	}
 }
 
@@ -1010,21 +1144,24 @@ bool PopupMenu::prepareGeometryFor(
 	}
 	const auto screen = QGuiApplication::screenAt(p);
 
-	createWinId();
-	windowHandle()->removeEventFilter(this);
-	windowHandle()->installEventFilter(this);
-	if (_parent) {
+	embedIntoParent();
+	if (isWindow()) {
+		createWinId();
+		windowHandle()->removeEventFilter(this);
+		windowHandle()->installEventFilter(this);
+		if (_parent) {
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-		setScreen(_parent->screen());
+			setScreen(_parent->screen());
 #else // Qt >= 6.0.0
-		windowHandle()->setScreen(_parent->screen());
+			windowHandle()->setScreen(_parent->screen());
 #endif // Qt < 6.0.0
-	} else if (screen) {
+		} else if (screen) {
 #if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-		setScreen(screen);
+			setScreen(screen);
 #else // Qt >= 6.0.0
-		windowHandle()->setScreen(screen);
+			windowHandle()->setScreen(screen);
 #endif // Qt < 6.0.0
+		}
 	}
 	validateCompositingSupport();
 
@@ -1051,11 +1188,14 @@ bool PopupMenu::prepareGeometryFor(
 			_additionalMenuPadding.left() - _boxShadow.extend().left(),
 			0),
 		_padding.top() - _topShift);
-	auto r = screen ? screen->availableGeometry() : QRect();
+	auto r = !isWindow()
+		? QRect(parentWidget()->mapToGlobal(parentWidget()->contentsRect().topLeft()),
+			parentWidget()->contentsRect().size())
+		: screen ? screen->availableGeometry() : QRect();
 #if QT_VERSION >= QT_VERSION_CHECK(6, 11, 0) && defined QT_FEATURE_wayland && QT_CONFIG(wayland)
 	using namespace QNativeInterface::Private;
 	if (const auto native
-			= windowHandle()->nativeInterface<QWaylandWindow>()) {
+			= isWindow() ? windowHandle()->nativeInterface<QWaylandWindow>() : nullptr) {
 		const auto dpr = windowHandle()->devicePixelRatio()
 			/ windowHandle()->handle()->devicePixelRatio();
 		const auto padding = _additionalMenuPadding - _additionalMenuMargins;
@@ -1138,16 +1278,27 @@ bool PopupMenu::prepareGeometryFor(
 			w.setY(r.y() - _margins.top());
 		}
 	}
-	move(w);
+	move(isWindow() ? w : parentWidget()->mapFromGlobal(w));
 
 	setOrigin(origin);
 	return true;
 }
 
 void PopupMenu::showPrepared(TriggeredSource source) {
+	if (!isWindow() && !_parent) {
+		if (auto previous = Active(); previous && previous != this) {
+			while (previous->_parent) {
+				previous = previous->_parent;
+			}
+			previous->hideMenu(true);
+		}
+		_previousFocus = QApplication::focusWidget();
+		qApp->installEventFilter(this);
+	}
+	ConstrainEmbeddedMenu(this);
 	startShowAnimation();
 
-	if (::Platform::IsWindows()) {
+	if (isWindow() && ::Platform::IsWindows()) {
 		ForceFullRepaintSync(this);
 	}
 	Integration::Instance().preparePopupMenu(this);
@@ -1158,9 +1309,13 @@ void PopupMenu::showPrepared(TriggeredSource source) {
 	if (!weak) {
 		return;
 	}
-	Platform::ShowOverAll(this);
 	raise();
-	activateWindow();
+	if (isWindow()) {
+		Platform::ShowOverAll(this);
+		activateWindow();
+	} else {
+		setFocus(Qt::PopupFocusReason);
+	}
 	if (Ui::ScreenReaderModeActive()) {
 		_menu->setShowSource(TriggeredSource::Keyboard);
 	} else {
@@ -1191,6 +1346,11 @@ void PopupMenu::finishSwitchAnimation() {
 void PopupMenu::setupMenuWidget() {
 	const auto paddingWrap = static_cast<PaddingWrap<Menu::Menu>*>(
 		_menu->parentWidget());
+	style::PaletteChanged(
+	) | rpl::on_next([=] {
+		paddingWrap->update();
+		update();
+	}, paddingWrap->lifetime());
 
 	paddingWrap->paintRequest(
 	) | rpl::on_next([=](QRect clip) {
@@ -1348,9 +1508,7 @@ void PopupMenu::swapStashed(SwitchDirection direction) {
 	const auto wantedHeight = _st.scrollPadding.top()
 		+ newMenuHeight
 		+ _st.scrollPadding.bottom();
-	const auto newScrollHeight = _st.maxHeight
-		? std::min(_st.maxHeight, wantedHeight)
-		: wantedHeight;
+	const auto newScrollHeight = constrainedScrollHeight(wantedHeight);
 
 	_switchState = std::make_unique<SwitchState>();
 	_switchState->direction = direction;
@@ -1385,6 +1543,9 @@ void PopupMenu::swapStashed(SwitchDirection direction) {
 
 	const auto raw = _switchState.get();
 	raw->overlay.create(this);
+	if (!isWindow()) {
+		raw->overlay->setGraphicsEffect(new MenuSurface(_st.radius));
+	}
 	raw->overlay->setAttribute(Qt::WA_TransparentForMouseEvents);
 	raw->overlay->move(_padding.left(), _padding.top());
 	raw->overlay->resize(scrollWidth, oldScrollHeight);
@@ -1472,12 +1633,13 @@ bool PopupMenu::hasStashedContent() const {
 }
 
 int PopupMenu::computePositionShift(int targetScrollHeight) const {
-	const auto screen = QGuiApplication::screenAt(
-		QPoint(x() + width() / 2, y() + height() / 2));
-	if (!screen) {
+	const auto screen = QGuiApplication::screenAt(mapToGlobal(rect().center()));
+	if (isWindow() && !screen) {
 		return 0;
 	}
-	const auto r = screen->availableGeometry();
+	const auto r = isWindow()
+		? screen->availableGeometry()
+		: parentWidget()->contentsRect();
 	const auto targetH = _padding.top()
 		+ targetScrollHeight
 		+ _padding.bottom();
@@ -1492,7 +1654,7 @@ int PopupMenu::computePositionShift(int targetScrollHeight) const {
 }
 
 RpWidget *PopupMenu::accessibilityParent() const {
-	return qobject_cast<RpWidget*>(parentWidget());
+	return dynamic_cast<RpWidget*>(_owner ? _owner.data() : parentWidget());
 }
 
 PopupMenu::~PopupMenu() {
@@ -1502,7 +1664,7 @@ PopupMenu::~PopupMenu() {
 	}
 	if (const auto parent = parentWidget()) {
 		const auto focused = QApplication::focusWidget();
-		if (_reactivateParent
+		if (isWindow() && _reactivateParent
 			&& focused != nullptr
 			&& Ui::InFocusChain(parent->window())) {
 			ActivateWindowDelayed(parent);
