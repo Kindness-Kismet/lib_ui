@@ -136,8 +136,8 @@ void TitleWidget::setResizeEnabled(bool enabled) {
 }
 
 void TitleWidget::paintEvent(QPaintEvent *e) {
-	// 全窗统一底色:不区分激活态,靠阴影区分卡片
-	QPainter(this).fillRect(e->rect(), st::windowBg);
+	// 标题栏与窗口外框共用底色，不区分激活态。
+	QPainter(this).fillRect(e->rect(), st::windowShellBg);
 }
 
 void TitleWidget::resizeEvent(QResizeEvent *e) {
