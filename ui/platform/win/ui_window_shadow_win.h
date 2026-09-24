@@ -99,6 +99,7 @@ private:
 	BYTE _r = 0;
 	BYTE _g = 0;
 	BYTE _b = 0;
+	BYTE _a = 255;
 	COLORREF _noKeyColor = RGB(255, 255, 255);
 
 };

@@ -61,6 +61,7 @@ void WindowShadow::setColor(QColor value) {
 	_r = value.red();
 	_g = value.green();
 	_b = value.blue();
+	_a = value.alpha();
 	if (working()) {
 		updateColor();
 	}
@@ -324,7 +325,11 @@ void WindowShadow::horCorners(int w, Gdiplus::Graphics *pgraphics0, Gdiplus::Gra
 }
 
 Gdiplus::Color WindowShadow::getColor(uchar alpha) const {
-	return Gdiplus::Color(BYTE(::Platform::IsWindows11OrGreater() ? 1 : alpha), _r, _g, _b);
+	// Windows 11 保留原有命中区域，旧版窗口投影遵循主题透明度。
+	const auto opacity = ::Platform::IsWindows11OrGreater()
+		? 1
+		: (alpha * _a) / 255;
+	return Gdiplus::Color(BYTE(opacity), _r, _g, _b);
 }
 
 Gdiplus::SolidBrush WindowShadow::getBrush(uchar alpha) const {

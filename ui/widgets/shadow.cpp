@@ -258,10 +258,12 @@ BoxShadow::Grid BoxShadow::preparedGrid(int cornerRadius) const {
 }
 
 void BoxShadow::prepare(int cornerRadius) const {
-	if (_cornerRadius == cornerRadius) {
+	const auto color = st::windowShadowFg->c;
+	if (_cornerRadius == cornerRadius && _color == color) {
 		return;
 	}
 	_cornerRadius = cornerRadius;
+	_color = color;
 	_middle = 2;
 
 	const auto ext = extend();
@@ -315,12 +317,14 @@ void BoxShadow::prepare(int cornerRadius) const {
 		std::move(image),
 		_blurRadius * ratio);
 
-	// Convert blurred RGB mask to black shadow with alpha.
+	// 模糊遮罩按主题颜色着色，并保留颜色自身的透明度。
 	for (auto y = 0; y < image.height(); ++y) {
 		auto row = reinterpret_cast<uint32*>(image.scanLine(y));
 		for (auto x = 0; x < image.width(); ++x) {
 			const auto mask = row[x] & 0xFFU;
-			row[x] = mask << 24;
+			row[x] = qPremultiply(qRgba(
+				color.red(), color.green(), color.blue(),
+				(mask * color.alpha()) / 255));
 		}
 	}
 

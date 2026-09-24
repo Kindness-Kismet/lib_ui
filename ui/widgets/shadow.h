@@ -118,6 +118,7 @@ private:
 	QPoint _offset;
 	float64 _opacity = 1.;
 	mutable int _cornerRadius = -1;
+	mutable QColor _color;
 	mutable QImage _cache;
 	mutable int _cornerL = 0;
 	mutable int _cornerT = 0;
