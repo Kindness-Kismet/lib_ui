@@ -30,6 +30,15 @@ void BoxContentDivider::paintEvent(QPaintEvent *e) {
 	QPainter p(this);
 
 	p.fillRect(e->rect(), _st.bg);
+	// 短分组条只保留居中的一条线，说明区域按指定边缘绘制。
+	if (height() <= st::boxDividerHeight) {
+		if (_parts & RectPart::Top) {
+			paintTop(p, (height() - _st.top.height()) / 2);
+		} else if (_parts & RectPart::Bottom) {
+			paintBottom(p, (height() - _st.bottom.height()) / 2);
+		}
+		return;
+	}
 	if (_parts & RectPart::Top) {
 		paintTop(p);
 	}
@@ -39,19 +48,21 @@ void BoxContentDivider::paintEvent(QPaintEvent *e) {
 }
 
 void BoxContentDivider::paintTop(QPainter &p, int skip) {
+	const auto inset = st::defaultBoxDividerLabelPadding.left();
 	const auto dividerFillTop = QRect(
-		0,
+		inset,
 		skip,
-		width(),
+		width() - 2 * inset,
 		_st.top.height());
 	_st.top.fill(p, dividerFillTop);
 }
 
 void BoxContentDivider::paintBottom(QPainter &p, int skip) {
+	const auto inset = st::defaultBoxDividerLabelPadding.left();
 	const auto dividerFillBottom = myrtlrect(
-		0,
+		inset,
 		height() - skip - _st.bottom.height(),
-		width(),
+		width() - 2 * inset,
 		_st.bottom.height());
 	_st.bottom.fill(p, dividerFillBottom);
 }

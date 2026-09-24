@@ -18,6 +18,7 @@
 #include "ui/round_rect.h"
 
 #include <QtGui/QtEvents>
+#include <QtGui/QPainterPath>
 
 namespace Ui {
 namespace {
@@ -978,9 +979,19 @@ void SettingsButton::paintEvent(QPaintEvent *e) {
 	Painter p(this);
 
 	const auto paintOver = (isOver() || isDown()) && !isDisabled();
+	p.fillRect(e->rect(), _st.textBg);
+	auto shape = QPainterPath();
+	shape.addRoundedRect(
+		rect().marginsRemoved(st::settingsRowMargin),
+		st::settingsRowRadius,
+		st::settingsRowRadius);
+	p.save();
+	p.setRenderHint(QPainter::Antialiasing);
+	p.setClipPath(shape, Qt::IntersectClip);
 	paintBg(p, e->rect(), paintOver);
 
 	paintRipple(p, 0, 0);
+	p.restore();
 
 	const auto outerw = width();
 	paintText(p, paintOver, outerw);

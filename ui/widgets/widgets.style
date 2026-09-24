@@ -676,11 +676,11 @@ defaultSubTextLabel: FlatLabel(defaultFlatLabel) {
 	textFg: windowSubTextFg;
 }
 
-boxDividerTop: icon {{ "box_divider_top", boxDividerFg }};
-boxDividerBottom: icon {{ "box_divider_bottom", boxDividerFg }};
-boxDividerHeight: 8px;
+boxDividerTop: icon {{ size(1px, 1px), windowDividerFg }};
+boxDividerBottom: icon {{ size(1px, 1px), windowDividerFg }};
+boxDividerHeight: 16px;
 defaultDividerBar: DividerBar {
-	bg: boxDividerBg;
+	bg: windowBg;
 	top: boxDividerTop;
 	bottom: boxDividerBottom;
 }
@@ -958,9 +958,9 @@ defaultMenuToggleOver: Toggle(defaultToggle) {
 	untoggledFg: menuIconFgOver;
 }
 defaultMenuSeparator: MenuSeparator {
-	padding: margins(0px, 5px, 0px, 5px);
+	padding: margins(12px, 6px, 12px, 6px);
 	width: 1px;
-	fg: menuSeparatorFg;
+	fg: windowDividerFg;
 }
 defaultMenu: Menu {
 	skip: 0px;
@@ -1000,7 +1000,7 @@ defaultPopupMenu: PopupMenu {
 
 	menu: defaultMenu;
 
-	radius: 6px;
+	radius: 12px;
 	duration: 150;
 	showDuration: 200;
 }
@@ -1515,6 +1515,8 @@ defaultSettingsRightLabel: FlatLabel(defaultFlatLabel) {
 	style: boxTextStyle;
 	maxHeight: 20px;
 }
+settingsRowMargin: margins(8px, 2px, 8px, 2px);
+settingsRowRadius: 10px;
 defaultSettingsButton: SettingsButton {
 	textFg: windowBoldFg;
 	textFgOver: windowBoldFgOver;
