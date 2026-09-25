@@ -1581,7 +1581,7 @@ defaultMultilineToast: Toast(defaultToast) {
 // Windows specific title
 
 windowTitleButtonWidth: 36px;
-windowTitleHeight: 30px;
+windowTitleHeight: 24px;
 windowTitleButton: IconButton {
 	width: windowTitleButtonWidth;
 	height: windowTitleHeight;
@@ -1606,72 +1606,72 @@ defaultWindowTitle: WindowTitle {
 	minimize: IconButton(windowTitleButton) {
 		icon: icon {
 			{ windowTitleButtonSize, titleButtonBg },
-			{ "title_button_minimize", titleButtonFg, point(0px, 3px) },
+			{ "title_button_minimize", titleButtonFg },
 		};
 		iconOver: icon {
 			{ windowTitleButtonSize, titleButtonBgOver },
-			{ "title_button_minimize", titleButtonFgOver, point(0px, 3px) },
+			{ "title_button_minimize", titleButtonFgOver },
 		};
 	}
 	minimizeIconActive: icon {
 		{ windowTitleButtonSize, titleButtonBgActive },
-		{ "title_button_minimize", titleButtonFgActive, point(0px, 3px) },
+		{ "title_button_minimize", titleButtonFgActive },
 	};
 	minimizeIconActiveOver: icon {
 		{ windowTitleButtonSize, titleButtonBgActiveOver },
-		{ "title_button_minimize", titleButtonFgActiveOver, point(0px, 3px) },
+		{ "title_button_minimize", titleButtonFgActiveOver },
 	};
 	maximize: IconButton(windowTitleButton) {
 		icon: icon {
 			{ windowTitleButtonSize, titleButtonBg },
-			{ "title_button_maximize", titleButtonFg, point(0px, 3px) },
+			{ "title_button_maximize", titleButtonFg },
 		};
 		iconOver: icon {
 			{ windowTitleButtonSize, titleButtonBgOver },
-			{ "title_button_maximize", titleButtonFgOver, point(0px, 3px) },
+			{ "title_button_maximize", titleButtonFgOver },
 		};
 	}
 	maximizeIconActive: icon {
 		{ windowTitleButtonSize, titleButtonBgActive },
-		{ "title_button_maximize", titleButtonFgActive, point(0px, 3px) },
+		{ "title_button_maximize", titleButtonFgActive },
 	};
 	maximizeIconActiveOver: icon {
 		{ windowTitleButtonSize, titleButtonBgActiveOver },
-		{ "title_button_maximize", titleButtonFgActiveOver, point(0px, 3px) },
+		{ "title_button_maximize", titleButtonFgActiveOver },
 	};
 	restoreIcon: icon {
 		{ windowTitleButtonSize, titleButtonBg },
-		{ "title_button_restore", titleButtonFg, point(0px, 3px) },
+		{ "title_button_restore", titleButtonFg },
 	};
 	restoreIconOver: icon {
 		{ windowTitleButtonSize, titleButtonBgOver },
-		{ "title_button_restore", titleButtonFgOver, point(0px, 3px) },
+		{ "title_button_restore", titleButtonFgOver },
 	};
 	restoreIconActive: icon {
 		{ windowTitleButtonSize, titleButtonBgActive },
-		{ "title_button_restore", titleButtonFgActive, point(0px, 3px) },
+		{ "title_button_restore", titleButtonFgActive },
 	};
 	restoreIconActiveOver: icon {
 		{ windowTitleButtonSize, titleButtonBgActiveOver },
-		{ "title_button_restore", titleButtonFgActiveOver, point(0px, 3px) },
+		{ "title_button_restore", titleButtonFgActiveOver },
 	};
 	close: IconButton(windowTitleButtonClose) {
 		icon: icon {
 			{ windowTitleButtonSize, titleButtonCloseBg },
-			{ "title_button_close", titleButtonCloseFg, point(0px, 3px) },
+			{ "title_button_close", titleButtonCloseFg },
 		};
 		iconOver: icon {
 			{ windowTitleButtonSize, titleButtonCloseBgOver },
-			{ "title_button_close", titleButtonCloseFgOver, point(0px, 3px) },
+			{ "title_button_close", titleButtonCloseFgOver },
 		};
 	}
 	closeIconActive: icon {
 		{ windowTitleButtonSize, titleButtonCloseBgActive },
-		{ "title_button_close", titleButtonCloseFgActive, point(0px, 3px) },
+		{ "title_button_close", titleButtonCloseFgActive },
 	};
 	closeIconActiveOver: icon {
 		{ windowTitleButtonSize, titleButtonCloseBgActiveOver },
-		{ "title_button_close", titleButtonCloseFgActiveOver, point(0px, 3px) },
+		{ "title_button_close", titleButtonCloseFgActiveOver },
 	};
 }
 
