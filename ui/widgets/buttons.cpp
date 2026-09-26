@@ -20,6 +20,8 @@
 #include <QtGui/QtEvents>
 #include <QtGui/QPainterPath>
 
+#include <QtCore/QVariant>
+
 namespace Ui {
 namespace {
 
@@ -979,7 +981,9 @@ void SettingsButton::paintEvent(QPaintEvent *e) {
 	Painter p(this);
 
 	const auto paintOver = (isOver() || isDown()) && !isDisabled();
-	p.fillRect(e->rect(), _st.textBg);
+	if (!property("AyuWindowMaterialSurfaceActive").toBool()) {
+		p.fillRect(e->rect(), _st.textBg);
+	}
 	auto shape = QPainterPath();
 	shape.addRoundedRect(
 		rect().marginsRemoved(st::settingsRowMargin),
@@ -1002,7 +1006,9 @@ void SettingsButton::paintEvent(QPaintEvent *e) {
 }
 
 void SettingsButton::paintBg(Painter &p, const QRect &rect, bool over) const {
-	p.fillRect(rect, over ? _st.textBgOver : _st.textBg);
+	if (over || !property("AyuWindowMaterialSurfaceActive").toBool()) {
+		p.fillRect(rect, over ? _st.textBgOver : _st.textBg);
+	}
 }
 
 void SettingsButton::paintText(Painter &p, bool over, int outerw) const {

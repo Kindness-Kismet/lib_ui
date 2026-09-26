@@ -24,6 +24,8 @@
 #include <windows.h>
 #include <shellscalingapi.h>
 
+#include <QtCore/QVariant>
+
 namespace Ui {
 namespace Platform {
 namespace {
@@ -137,7 +139,9 @@ void TitleWidget::setResizeEnabled(bool enabled) {
 
 void TitleWidget::paintEvent(QPaintEvent *e) {
 	// 标题栏与窗口外框共用底色，不区分激活态。
-	QPainter(this).fillRect(e->rect(), st::windowShellBg);
+	if (!window()->property("AyuWindowMaterialActive").toBool()) {
+		QPainter(this).fillRect(e->rect(), st::windowShellBg);
+	}
 }
 
 void TitleWidget::resizeEvent(QResizeEvent *e) {

@@ -15,6 +15,8 @@
 #include <QtGui/QtEvents>
 #include <QAccessible>
 
+#include <QtCore/QVariant>
+
 namespace Ui {
 namespace {
 
@@ -190,7 +192,9 @@ void SideBarButton::paintEvent(QPaintEvent *e) {
 	const auto inner = innerRect();
 
 	// 侧栏与主窗口共用统一底色;选中态只靠图标与文字变色区分,不画底块。
-	p.fillRect(clip, st::windowBg);
+	if (!property("AyuWindowMaterialSurfaceActive").toBool()) {
+		p.fillRect(clip, st::windowBg);
+	}
 
 	RippleButton::paintRipple(p, inner.topLeft());
 

@@ -101,7 +101,8 @@ void LayerStackWidget::BackgroundWidget::setCacheImages(
 	_specialLayerCacheBox = _specialLayerBox;
 	_layerCacheBox = _layerBox;
 	_repaintIssued = false;
-	setAttribute(Qt::WA_OpaquePaintEvent, !_bodyCache.isNull());
+	setAttribute(Qt::WA_OpaquePaintEvent,
+		!_bodyCache.isNull() && !_bodyCache.hasAlphaChannel());
 }
 
 void LayerStackWidget::BackgroundWidget::removeBodyCache() {
@@ -118,7 +119,8 @@ bool LayerStackWidget::BackgroundWidget::hasBodyCache() const {
 void LayerStackWidget::BackgroundWidget::refreshBodyCache(
 		QPixmap &&bodyCache) {
 	_bodyCache = std::move(bodyCache);
-	setAttribute(Qt::WA_OpaquePaintEvent, !_bodyCache.isNull());
+	setAttribute(Qt::WA_OpaquePaintEvent,
+		!_bodyCache.isNull() && !_bodyCache.hasAlphaChannel());
 }
 
 void LayerStackWidget::BackgroundWidget::startAnimation(
@@ -567,7 +569,8 @@ void LayerStackWidget::setCacheImages() {
 		showChildren();
 		mainMenuCache = Ui::Shadow::grab(_mainMenu, st::boxRoundShadow, RectPart::Right);
 	}
-	setAttribute(Qt::WA_OpaquePaintEvent, !bodyCache.isNull());
+	setAttribute(Qt::WA_OpaquePaintEvent,
+		!bodyCache.isNull() && !bodyCache.hasAlphaChannel());
 	updateLayerBoxes();
 	_background->setCacheImages(std::move(bodyCache), std::move(mainMenuCache), std::move(specialLayerCache), std::move(layerCache));
 }

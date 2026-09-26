@@ -20,6 +20,8 @@
 #include <QtGui/QtEvents>
 #include <QtGui/QWindow>
 
+#include <QtCore/QVariant>
+
 namespace Ui {
 namespace Platform {
 
@@ -119,7 +121,9 @@ void TitleWidget::paintEvent(QPaintEvent *e) {
 	Painter p(this);
 
 	const auto active = isActiveWindow();
-	p.fillRect(rect(), active ? _st->bgActive : _st->bg);
+	if (!window()->property("AyuWindowMaterialActive").toBool()) {
+		p.fillRect(rect(), active ? _st->bgActive : _st->bg);
+	}
 
 	p.setPen(active ? _st->fgActive : _st->fg);
 

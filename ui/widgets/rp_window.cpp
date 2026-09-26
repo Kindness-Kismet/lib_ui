@@ -8,6 +8,7 @@
 
 #include "ui/gl/gl_surface.h"
 #include "ui/platform/ui_platform_window.h"
+#include <QtCore/QVariant>
 
 namespace Ui {
 
@@ -19,6 +20,22 @@ RpWindow::RpWindow(QWidget *parent)
 }()) {
 	Expects(_helper != nullptr);
 
+	_helper->initInWindow(this);
+	hide();
+}
+
+RpWindow::RpWindow(Surface surface, QWidget *parent)
+: RpWidget(parent)
+, _helper([&]() -> std::unique_ptr<Platform::BasicWindowHelper> {
+	if (surface == Surface::NativeMaterial) {
+		setProperty("AyuWindowMaterialCapable", true);
+		setAttribute(Qt::WA_NoSystemBackground, true);
+		setAttribute(Qt::WA_TranslucentBackground, true);
+	}
+	GL::EnsureWindowRhi(this);
+	return Platform::CreateWindowHelper(this);
+}()) {
+	Expects(_helper != nullptr);
 	_helper->initInWindow(this);
 	hide();
 }

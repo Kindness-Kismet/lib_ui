@@ -35,6 +35,8 @@ using WindowTitleHitTestFlags = base::flags<WindowTitleHitTestFlag>;
 
 class RpWindow : public RpWidget {
 public:
+	enum class Surface { Opaque, NativeMaterial };
+	explicit RpWindow(Surface surface, QWidget *parent = nullptr);
 	explicit RpWindow(QWidget *parent = nullptr);
 	explicit RpWindow(bool translucent, QWidget *parent = nullptr);
 	~RpWindow();

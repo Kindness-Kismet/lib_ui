@@ -24,6 +24,7 @@
 #include "styles/style_widgets.h"
 
 #include <QtCore/QPoint>
+#include <QtCore/QVariant>
 #include <QtGui/QWindow>
 #include <QtWidgets/QStyleFactory>
 #include <QtWidgets/QApplication>
@@ -355,6 +356,12 @@ void WindowHelper::overrideSystemButtonDown(HitTestResult button) {
 }
 
 void WindowHelper::init() {
+	window()->events() | rpl::on_next([=](not_null<QEvent*> event) {
+		if (event->type() == QEvent::DynamicPropertyChange) {
+			updateWindowFrameColors();
+		}
+	}, window()->lifetime());
+
 	_title->show();
 
 	window()->winIdValue() | rpl::on_next([=](WId winId) {
@@ -424,7 +431,8 @@ void WindowHelper::init() {
 		}
 		if (state != Qt::WindowMinimized) {
 			const auto is = (state == Qt::WindowMaximized)
-				&& window()->testAttribute(Qt::WA_TranslucentBackground);
+				&& window()->testAttribute(Qt::WA_TranslucentBackground)
+				&& !window()->property("AyuWindowMaterialCapable").toBool();
 			if (_isMaximizedAndTranslucent != is) {
 				_isMaximizedAndTranslucent = is;
 				updateCornersRounding();
@@ -782,6 +790,9 @@ bool WindowHelper::nativeResize() const {
 	Expects(window()->windowHandle() != nullptr);
 
 	if (::Platform::IsWindows11OrGreater()) {
+		if (window()->property("AyuWindowMaterialCapable").toBool()) {
+			return true;
+		}
 		switch (window()->windowHandle()->surfaceType()) {
 		case QSurface::RasterSurface:
 		case QSurface::RasterGLSurface:
@@ -805,7 +816,9 @@ void WindowHelper::updateWindowFrameColors(bool active) {
 	const auto bg = active
 		? _title->st()->bgActive->c
 		: _title->st()->bg->c;
-	COLORREF bgRef = RGB(bg.red(), bg.green(), bg.blue());
+	COLORREF bgRef = window()->property("AyuWindowMaterialActive").toBool()
+		? COLORREF(0xFFFFFFFE)
+		: RGB(bg.red(), bg.green(), bg.blue());
 	DwmSetWindowAttribute(
 		_handle,
 		kDWMWA_CAPTION_COLOR,
