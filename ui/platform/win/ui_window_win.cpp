@@ -817,7 +817,7 @@ void WindowHelper::updateWindowFrameColors(bool active) {
 		? _title->st()->bgActive->c
 		: _title->st()->bg->c;
 	COLORREF bgRef = window()->property("AyuWindowMaterialActive").toBool()
-		? COLORREF(0xFFFFFFFE)
+		? COLORREF(0xFFFFFFFF)
 		: RGB(bg.red(), bg.green(), bg.blue());
 	DwmSetWindowAttribute(
 		_handle,
