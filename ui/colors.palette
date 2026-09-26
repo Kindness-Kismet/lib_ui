@@ -315,7 +315,7 @@ historyPeer8NameFgSelected: historyPeer8NameFg; // orange group member name in a
 historyPeer8UserpicBg: #febb5b; // orange userpic background
 historyPeerUserpicFg: windowFgActive; // default userpic initials
 historyPeerSavedMessagesBg: historyPeer4UserpicBg; // saved messages userpic background
-historyPeerArchiveUserpicBg: dialogsUnreadBgMuted; // archive folder userpic background
+historyPeerArchiveUserpicBg: #798ca7 | dialogsUnreadBgMuted; // archive folder userpic background
 
 historyPeer1UserpicBg2: #d45246 | historyPeer1UserpicBg; // the second red userpic background
 historyPeer2UserpicBg2: #46ba43 | historyPeer2UserpicBg; // the second green userpic background
